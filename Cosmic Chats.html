@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cosmic Chats</title>
+<style>
+:root {
+  box-sizing: border-box;
+  --bg: #0b0d1a; --panel: #141830; --text: #e8ecff; --muted: #8a93bd;
+  --accent: #7aa2ff; --mine: #2a4fa8; --border: #262d50; --danger: #ff8a8a; --gold: #f5c76b;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #f0f3fc; --panel: #ffffff; --text: #1a1f3a; --muted: #5d6588;
+    --accent: #3459d6; --mine: #3459d6; --border: #d9def2; --danger: #b42318; --gold: #9a6700;
+    color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #f0f3fc; --panel: #ffffff; --text: #1a1f3a; --muted: #5d6588;
+  --accent: #3459d6; --mine: #3459d6; --border: #d9def2; --danger: #b42318; --gold: #9a6700;
+  color-scheme: light;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; line-height: 1.45;
+}
+.app { display: flex; flex-direction: column; height: 100%; max-width: 760px; margin: 0 auto; }
+header {
+  display: flex; align-items: center; gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+  border-bottom: 1px solid var(--border); background: var(--panel);
+}
+header h1 { font-size: 1.05rem; margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px; }
+.link-btn {
+  font: inherit; font-size: .8rem; background: none; border: 1px solid var(--border);
+  color: var(--accent); border-radius: 999px; padding: 4px 10px; cursor: pointer; white-space: nowrap;
+}
+.link-btn.danger { color: var(--danger); }
+.hidden { display: none !important; }
+
+#view { flex: 1; overflow-y: auto; padding: 12px; -webkit-overflow-scrolling: touch; }
+.home-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.home-top p { margin: 0; color: var(--muted); font-size: .9rem; }
+.new-btn {
+  font: inherit; background: var(--accent); color: #fff; border: 0; border-radius: 10px;
+  padding: 9px 14px; cursor: pointer;
+}
+.room-card {
+  display: flex; gap: 10px; align-items: center; background: var(--panel);
+  border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px;
+  cursor: pointer;
+}
+.room-card .main { flex: 1; min-width: 0; }
+.room-card .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.room-card .meta { font-size: .78rem; color: var(--muted); }
+.pin { color: var(--gold); font-size: .72rem; margin-left: 6px; }
+.empty { color: var(--muted); text-align: center; padding: 30px 10px; font-size: .95rem; }
+.day { text-align: center; color: var(--muted); font-size: .75rem; margin: 14px 0 8px; }
+.row { display: flex; margin: 6px 0; }
+.row.mine { justify-content: flex-end; }
+.bubble {
+  max-width: 82%; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 16px 16px 16px 4px; padding: 8px 12px;
+}
+.row.mine .bubble { background: var(--mine); border-color: var(--mine); color: #fff; border-radius: 16px 16px 4px 16px; }
+.name { font-size: .8rem; font-weight: 600; color: var(--accent); }
+.row.mine .name { color: #dbe6ff; }
+.time { font-size: .7rem; color: var(--muted); margin-left: 6px; }
+.row.mine .time { color: #c9d6f5; }
+.badge {
+  display: inline-block; font-size: .66rem; border: 1px solid currentColor;
+  border-radius: 6px; padding: 0 5px; margin-left: 6px; opacity: .85;
+}
+.badge.mod { color: var(--gold); }
+.text { white-space: pre-wrap; word-wrap: break-word; margin: 2px 0 0; }
+.quote {
+  border-left: 3px solid var(--accent); background: rgba(127,127,170,.12);
+  border-radius: 6px; padding: 4px 8px; margin-bottom: 6px; font-size: .8rem; color: var(--muted);
+}
+.quote b { color: var(--accent); font-weight: 600; }
+.row.mine .quote { border-left-color: #cfe0ff; color: #d8e3fb; }
+.row.mine .quote b { color: #fff; }
+.actions { margin-top: 4px; display: flex; gap: 10px; }
+.actions button {
+  font: inherit; font-size: .72rem; background: none; border: 0; padding: 0;
+  color: var(--muted); cursor: pointer; text-decoration: underline;
+}
+.actions button.danger { color: var(--danger); }
+.row.mine .actions button { color: #c9d6f5; }
+.row.mine .actions button.danger { color: #ffd0d0; }
+
+.composer {
+  border-top: 1px solid var(--border); background: var(--panel);
+  padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+}
+.composer.hidden { display: none; }
+.replying { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); margin-bottom: 6px; }
+.replying span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-inputs { display: flex; gap: 8px; align-items: flex-end; }
+textarea {
+  flex: 1; font: inherit; color: var(--text); background: var(--bg);
+  border: 1px solid var(--border); border-radius: 18px; padding: 9px 12px;
+  resize: none; max-height: 140px; min-height: 40px;
+}
+.send {
+  font: inherit; background: var(--accent); color: #fff; border: 0;
+  border-radius: 999px; padding: 10px 16px; cursor: pointer;
+}
+.send:disabled { opacity: .5; cursor: default; }
+.toggle {
+  font: inherit; font-size: .8rem; background: none; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 999px; padding: 4px 10px; cursor: pointer; margin-bottom: 6px;
+}
+.toggle[aria-pressed="true"] { color: #fff; background: var(--accent); border-color: var(--accent); }
+.err { color: var(--danger); font-size: .85rem; min-height: 1.1em; margin-top: 4px; }
+
+.overlay {
+  position: fixed; inset: 0; background: rgba(5,6,14,.7); display: flex;
+  align-items: center; justify-content: center; padding: 20px; z-index: 50;
+}
+.card {
+  width: 100%; max-width: 380px; background: var(--panel); border: 1px solid var(--border);
+  border-radius: 16px; padding: 20px; display: grid; gap: 10px;
+}
+.card h2 { margin: 0; font-size: 1.1rem; }
+.card p { margin: 0; color: var(--muted); font-size: .9rem; }
+.card input {
+  font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px; width: 100%;
+}
+.card .primary {
+  font: inherit; background: var(--accent); color: #fff; border: 0; border-radius: 10px; padding: 11px; cursor: pointer;
+}
+.card .primary:disabled { opacity: .5; }
+.card .cancel { font: inherit; background: none; color: var(--muted); border: 0; cursor: pointer; padding: 6px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <button class="link-btn hidden" id="back">← Chats</button>
+    <h1 id="title">🌌 Cosmic Chats</h1>
+    <button class="link-btn danger hidden" id="modDeleteRoom">Delete chat</button>
+    <span class="who" id="who"></span>
+    <button class="link-btn" id="changeName">Name</button>
+  </header>
+
+  <div id="view"></div>
+
+  <div class="composer hidden" id="composer">
+    <div class="replying hidden" id="replying">
+      <span id="replyText"></span>
+      <button class="link-btn" id="cancelReply">Cancel</button>
+    </div>
+    <button class="toggle" id="askToggle" aria-pressed="false">❓ Ask as question</button>
+    <div class="row-inputs">
+      <textarea id="input" rows="1" maxlength="2000" placeholder="Message…"></textarea>
+      <button class="send" id="send">Send</button>
+    </div>
+    <div class="err" id="sendErr"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="nameDlg">
+  <div class="card" role="dialog" aria-labelledby="nameTitle">
+    <h2 id="nameTitle">Choose your username</h2>
+    <p>3–20 letters, numbers or underscores. Each username belongs to one person only.</p>
+    <input id="nameInput" maxlength="20" autocomplete="off" placeholder="e.g. Cosmic_Explorer">
+    <div class="err" id="nameErr"></div>
+    <button class="primary" id="nameSave">Save username</button>
+    <button class="cancel" id="nameCancel">Cancel</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="roomDlg">
+  <div class="card" role="dialog" aria-labelledby="roomTitleLbl">
+    <h2 id="roomTitleLbl">Name your new chat</h2>
+    <p>Pick a topic title, like "Black holes" or "Mars missions".</p>
+    <input id="roomInput" maxlength="60" autocomplete="off" placeholder="Chat title">
+    <div class="err" id="roomErr"></div>
+    <button class="primary" id="roomCreate">Create chat</button>
+    <button class="cancel" id="roomCancel">Cancel</button>
+  </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const viewEl = $('#view'), titleEl = $('#title'), whoEl = $('#who'), backBtn = $('#back');
+const modDeleteRoomBtn = $('#modDeleteRoom'), composerEl = $('#composer');
+const inputEl = $('#input'), sendBtn = $('#send'), sendErr = $('#sendErr');
+const askToggle = $('#askToggle'), replyingEl = $('#replying'), replyTextEl = $('#replyText');
+const nameDlg = $('#nameDlg'), nameInput = $('#nameInput'), nameErr = $('#nameErr');
+const roomDlg = $('#roomDlg'), roomInput = $('#roomInput'), roomErr = $('#roomErr');
+
+const PROFILE_KEY = 'cosmic_chats_profile';
+const UID_KEY = 'cosmic_chats_uid';
+const USERNAME_RE = /^[A-Za-z0-9_]{3,20}$/;
+const GENERAL = { id: 'general', title: 'General', general: true, createdBy: 'Cosmic Chats', createdAt: '' };
+
+let db = null, user = null;
+let myId = null, isMod = false;
+let profile = null;               // { uid, username }
+let loaded = false, loadTimer = null;
+let currentRoom = null;           // null = home, else room object
+let replyTo = null, isQuestion = false;
+let raw = { rooms: [], messages: [], questions: [], answers: [] };
+let allMessages = [], rooms = [];
+
+/* ---------- identity ---------- */
+function localUid() {
+  try {
+    let u = localStorage.getItem(UID_KEY);
+    if (!u) {
+      u = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem(UID_KEY, u);
+    }
+    return u;
+  } catch (e) {
+    return 'u' + Math.random().toString(36).slice(2, 12);
+  }
+}
+function loadProfile() {
+  try {
+    const p = JSON.parse(localStorage.getItem(PROFILE_KEY));
+    if (p && p.uid && USERNAME_RE.test(p.username)) return p;
+  } catch (e) {}
+  return null;
+}
+function saveProfile(p) { try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch (e) {} }
+
+function h(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+}
+function fmtDay(iso) {
+  const d = new Date(iso);
+  return isNaN(d) ? '' : d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+}
+function errText(e) { return (e && (e.message || e.code)) || 'please try again'; }
+
+/* ---------- unique usernames ---------- */
+async function claimName(name, uid) {
+  // Usernames are compared case-insensitively. Each name is a document
+  // under usernames/, so a name can belong to only one person.
+  const ref = db.collection('usernames').doc(name.toLowerCase());
+  const lease = await ref.acquire({ holder: uid, ttlMs: 4000 });
+  if (!lease || !lease.acquired) throw new Error('that name is being claimed right now, try again');
+  const snap = await ref.get();
+  if (snap.exists && snap.data() && snap.data().uid !== uid) return false;
+  await ref.set({ uid: uid, username: name });
+  return true;
+}
+async function releaseName(name) {
+  try { await db.collection('usernames').doc(name.toLowerCase()).delete(); } catch (e) {}
+}
+
+/* ---------- username dialog ---------- */
+function openNameDlg(allowCancel) {
+  nameInput.value = profile ? profile.username : '';
+  nameErr.textContent = '';
+  $('#nameCancel').classList.toggle('hidden', !allowCancel);
+  nameDlg.classList.remove('hidden');
+  setTimeout(() => nameInput.focus(), 50);
+}
+$('#nameCancel').addEventListener('click', () => nameDlg.classList.add('hidden'));
+$('#changeName').addEventListener('click', () => openNameDlg(true));
+nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#nameSave').click(); });
+$('#nameSave').addEventListener('click', async () => {
+  const name = nameInput.value.trim();
+  if (!USERNAME_RE.test(name)) { nameErr.textContent = 'Use 3–20 letters, numbers or underscores.'; return; }
+  if (!db) { nameErr.textContent = 'Not available in this view. Open this page from claude.ai.'; return; }
+  if (profile && profile.username.toLowerCase() === name.toLowerCase()) {
+    nameDlg.classList.add('hidden');
+    return;
+  }
+  const btn = $('#nameSave');
+  btn.disabled = true; nameErr.textContent = '';
+  try {
+    const ok = await claimName(name, myId);
+    if (!ok) { nameErr.textContent = 'That username is already taken. Try another.'; return; }
+    if (profile) await releaseName(profile.username);
+    profile = { uid: myId, username: name };
+    saveProfile(profile);
+    nameDlg.classList.add('hidden');
+    updateWho();
+    render();
+  } catch (e) {
+    nameErr.textContent = 'Could not save: ' + errText(e);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+function updateWho() {
+  whoEl.textContent = profile ? (isMod ? `👑 ${profile.username}` : profile.username) : '';
+}
+
+/* ---------- new chat dialog ---------- */
+$('#roomCancel').addEventListener('click', () => roomDlg.classList.add('hidden'));
+roomInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#roomCreate').click(); });
+function openRoomDlg() {
+  if (!profile) { openNameDlg(false); return; }
+  roomInput.value = ''; roomErr.textContent = '';
+  roomDlg.classList.remove('hidden');
+  setTimeout(() => roomInput.focus(), 50);
+}
+$('#roomCreate').addEventListener('click', async () => {
+  const title = roomInput.value.trim();
+  if (!title) { roomErr.textContent = 'Please name your chat first.'; return; }
+  const btn = $('#roomCreate');
+  btn.disabled = true; roomErr.textContent = '';
+  try {
+    const ref = await db.collection('rooms').add({
+      title: title.slice(0, 60), createdBy: profile.username, authorId: myId,
+      mod: isMod, createdAt: new Date().toISOString(),
+    });
+    roomDlg.classList.add('hidden');
+    openRoom({ id: ref.id, title: title.slice(0, 60), createdBy: profile.username, createdAt: '' });
+  } catch (e) {
+    roomErr.textContent = 'Could not create chat: ' + errText(e);
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ---------- navigation ---------- */
+function openRoom(room) {
+  currentRoom = room;
+  replyTo = null; replyingEl.classList.add('hidden');
+  isQuestion = false; askToggle.setAttribute('aria-pressed', 'false');
+  render(true);
+}
+function goHome() {
+  currentRoom = null;
+  replyTo = null;
+  render();
+}
+backBtn.addEventListener('click', goHome);
+
+/* ---------- moderation ---------- */
+async function deleteMessage(m) {
+  if (!confirm('Delete this message? This cannot be undone.')) return;
+  try {
+    await db.collection(m.col).doc(m.id).delete();
+  } catch (e) {
+    sendErr.textContent = 'Could not delete: ' + errText(e);
+  }
+}
+modDeleteRoomBtn.addEventListener('click', async () => {
+  if (!currentRoom || currentRoom.general || !isMod) return;
+  if (!confirm(`Delete the chat "${currentRoom.title}" and all its messages? This cannot be undone.`)) return;
+  const roomId = currentRoom.id;
+  modDeleteRoomBtn.disabled = true;
+  try {
+    const snap = await db.collection('messages').where('roomId', '==', roomId).get();
+    for (const d of snap.docs) await db.collection('messages').doc(d.id).delete();
+    await db.collection('rooms').doc(roomId).delete();
+    goHome();
+  } catch (e) {
+    sendErr.textContent = 'Could not delete chat: ' + errText(e);
+  } finally {
+    modDeleteRoomBtn.disabled = false;
+  }
+});
+
+/* ---------- data ---------- */
+function normalize() {
+  const list = [];
+  for (const d of raw.messages) {
+    list.push({ col: 'messages', id: d.id, roomId: d.roomId || 'general', text: d.text || '',
+      username: d.username || 'Someone', authorId: d.authorId || null, mod: !!d.mod,
+      kind: d.kind || 'chat', replyTo: d.replyTo || null, createdAt: d.createdAt || '' });
+  }
+  for (const q of raw.questions) {
+    list.push({ col: 'questions', id: q.id, roomId: 'general', text: q.text || '', username: q.name || 'Someone',
+      authorId: null, mod: false, kind: 'question', replyTo: null, createdAt: q.createdAt || '' });
+  }
+  for (const a of raw.answers) {
+    list.push({ col: 'answers', id: a.id, roomId: 'general', text: a.text || '', username: a.name || 'Someone',
+      authorId: null, mod: false, kind: 'answer', replyTo: a.questionId || null, createdAt: a.createdAt || '' });
+  }
+  list.sort((x, y) => (x.createdAt < y.createdAt ? -1 : x.createdAt > y.createdAt ? 1 : 0));
+  allMessages = list;
+  rooms = raw.rooms.map((r) => ({ id: r.id, title: r.title || 'Untitled', createdBy: r.createdBy || 'Someone',
+    createdAt: r.createdAt || '', authorId: r.authorId || null }));
+}
+
+/* ---------- rendering ---------- */
+function render(scrollBottom) {
+  if (!db) return;
+  normalize();
+  if (currentRoom) renderRoom(scrollBottom); else renderHome();
+}
+
+function renderHome() {
+  titleEl.textContent = '🌌 Cosmic Chats';
+  backBtn.classList.add('hidden');
+  modDeleteRoomBtn.classList.add('hidden');
+  composerEl.classList.add('hidden');
+  viewEl.textContent = '';
+
+  const top = h('div', 'home-top');
+  top.append(h('p', null, 'Pick a chat or start a new topic'));
+  const newBtn = h('button', 'new-btn', '+ New chat');
+  newBtn.addEventListener('click', openRoomDlg);
+  top.append(newBtn);
+  viewEl.append(top);
+
+  if (!loaded) { viewEl.append(h('div', 'empty', 'Connecting to the universe…')); return; }
+
+  const all = [GENERAL, ...rooms.slice().reverse()];
+  for (const room of all) {
+    const card = h('div', 'room-card');
+    const main = h('div', 'main');
+    const t = h('div', 'title', room.title);
+    if (room.general) t.append(h('span', 'pin', 'pinned'));
+    main.append(t);
+    const count = allMessages.filter((m) => m.roomId === room.id).length;
+    const meta = room.general ? `${count} messages · everyone` :
+      `by ${room.createdBy} · ${fmtTime(room.createdAt)} · ${count} message${count === 1 ? '' : 's'}`;
+    main.append(h('div', 'meta', meta));
+    card.append(main);
+
+    if (isMod && !room.general) {
+      const del = h('button', 'link-btn danger', 'Delete');
+      del.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Delete the chat "${room.title}" and all its messages?`)) return;
+        try {
+          const snap = await db.collection('messages').where('roomId', '==', room.id).get();
+          for (const d of snap.docs) await db.collection('messages').doc(d.id).delete();
+          await db.collection('rooms').doc(room.id).delete();
+        } catch (err) {
+          sendErr.textContent = 'Could not delete chat: ' + errText(err);
+        }
+      });
+      card.append(del);
+    }
+
+    card.addEventListener('click', () => openRoom(room));
+    viewEl.append(card);
+  }
+}
+
+function renderRoom(scrollBottom) {
+  titleEl.textContent = currentRoom.title;
+  backBtn.classList.remove('hidden');
+  composerEl.classList.remove('hidden');
+  modDeleteRoomBtn.classList.toggle('hidden', !(isMod && !currentRoom.general));
+  viewEl.textContent = '';
+
+  const msgs = allMessages.filter((m) => m.roomId === currentRoom.id);
+  if (!loaded) { viewEl.append(h('div', 'empty', 'Connecting to the universe…')); return; }
+  if (!msgs.length) {
+    viewEl.append(h('div', 'empty', 'No messages yet. Say hello, or ask the first question!'));
+  }
+
+  const nearBottom = viewEl.scrollHeight - viewEl.scrollTop - viewEl.clientHeight < 120;
+  let lastDay = '';
+  for (const m of msgs) {
+    const day = fmtDay(m.createdAt);
+    if (day && day !== lastDay) { viewEl.append(h('div', 'day', day)); lastDay = day; }
+
+    const mine = !!(myId && m.authorId && m.authorId === myId);
+    const row = h('div', 'row' + (mine ? ' mine' : ''));
+    const bubble = h('div', 'bubble');
+
+    if (m.replyTo) {
+      const target = allMessages.find((x) => x.id === m.replyTo);
+      const q = h('div', 'quote');
+      if (target) {
+        q.append(h('b', null, target.username + ': '));
+        q.append(document.createTextNode(target.text.slice(0, 90) + (target.text.length > 90 ? '…' : '')));
+      } else {
+        q.textContent = 'Replying to an earlier message';
+      }
+      bubble.append(q);
+    }
+
+    const head = h('div');
+    head.append(h('span', 'name', m.username));
+    if (m.mod) head.append(h('span', 'badge mod', 'Moderator'));
+    head.append(h('span', 'time', fmtTime(m.createdAt)));
+    if (m.kind === 'question' || m.kind === 'answer') {
+      head.append(h('span', 'badge', m.kind === 'question' ? 'Question' : 'Answer'));
+    }
+    bubble.append(head);
+    bubble.append(h('p', 'text', m.text));
+
+    const actions = h('div', 'actions');
+    if (profile) {
+      const rb = h('button', null, 'Reply');
+      rb.addEventListener('click', () => setReply(m));
+      actions.append(rb);
+    }
+    if (isMod || mine) {
+      const db_ = h('button', 'danger', isMod && !mine ? 'Delete (mod)' : 'Delete');
+      db_.addEventListener('click', () => deleteMessage(m));
+      actions.append(db_);
+    }
+    if (actions.childNodes.length) bubble.append(actions);
+
+    row.append(bubble);
+    viewEl.append(row);
+  }
+
+  if (scrollBottom || nearBottom) viewEl.scrollTop = viewEl.scrollHeight;
+}
+
+function setReply(m) {
+  replyTo = m.id;
+  replyTextEl.textContent = 'Replying to ' + m.username + ': ' + m.text.slice(0, 60);
+  replyingEl.classList.remove('hidden');
+  inputEl.focus();
+}
+$('#cancelReply').addEventListener('click', () => { replyTo = null; replyingEl.classList.add('hidden'); });
+askToggle.addEventListener('click', () => {
+  isQuestion = !isQuestion;
+  askToggle.setAttribute('aria-pressed', String(isQuestion));
+});
+
+async function send() {
+  const text = inputEl.value.trim();
+  sendErr.textContent = '';
+  if (!currentRoom) return;
+  if (!profile) { openNameDlg(false); return; }
+  if (!text) return;
+  if (!db) { sendErr.textContent = 'Sending isn\'t available in this view. Open this page from claude.ai.'; return; }
+
+  sendBtn.disabled = true;
+  try {
+    await db.collection('messages').add({
+      text: text.slice(0, 2000),
+      username: profile.username,
+      authorId: myId,
+      mod: isMod,
+      roomId: currentRoom.id,
+      kind: isQuestion ? 'question' : 'chat',
+      replyTo: replyTo,
+      createdAt: new Date().toISOString(),
+    });
+    inputEl.value = '';
+    inputEl.style.height = '';
+    replyTo = null; replyingEl.classList.add('hidden');
+    isQuestion = false; askToggle.setAttribute('aria-pressed', 'false');
+  } catch (e) {
+    sendErr.textContent = 'Could not send: ' + errText(e);
+  } finally {
+    sendBtn.disabled = false;
+  }
+}
+sendBtn.addEventListener('click', send);
+inputEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+});
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 140) + 'px';
+});
+
+/* ---------- start ---------- */
+function markLoaded() {
+  loaded = true;
+  clearTimeout(loadTimer);
+  render();
+}
+
+async function init() {
+  loadTimer = setTimeout(() => {
+    if (!loaded) viewEl.textContent = '';
+    if (!loaded) viewEl.append(h('div', 'empty', 'The universe is taking a while to answer. Still trying…'));
+  }, 10000);
+
+  const c = window.claude;
+  db = c && c.use ? await c.use('db') : null;
+  user = c && c.use ? await c.use('user') : null;
+  try {
+    if (user) {
+      myId = (await user.id()) || null;
+      isMod = !!(await user.isOwner());
+    }
+  } catch (e) {}
+  if (!myId) myId = localUid();
+
+  profile = loadProfile();
+  if (profile && profile.uid !== myId) profile = null;
+  updateWho();
+
+  if (!db) {
+    clearTimeout(loadTimer);
+    viewEl.textContent = '';
+    viewEl.append(h('div', 'empty', 'Chats aren\'t available in this view. Open this page from claude.ai to join.'));
+    return;
+  }
+
+  if (!profile) openNameDlg(false);
+
+  const onErr = (err) => { sendErr.textContent = 'Connection problem: ' + errText(err); };
+  const docs = (snap) => snap.docs.filter((d) => d.exists).map((d) => ({ id: d.id, ...d.data() }));
+
+  db.collection('rooms').orderBy('createdAt', 'asc').onSnapshot((s) => { raw.rooms = docs(s); markLoaded(); }, onErr);
+  db.collection('messages').orderBy('createdAt', 'asc').onSnapshot((s) => { raw.messages = docs(s); markLoaded(); }, onErr);
+  db.collection('questions').orderBy('createdAt', 'asc').onSnapshot((s) => { raw.questions = docs(s); markLoaded(); }, onErr);
+  db.collection('answers').orderBy('createdAt', 'asc').onSnapshot((s) => { raw.answers = docs(s); markLoaded(); }, onErr);
+}
+
+init();
+</script>
+</body>
+</html>
